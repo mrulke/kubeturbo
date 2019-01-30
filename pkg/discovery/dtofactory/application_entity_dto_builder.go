@@ -52,7 +52,7 @@ func (builder *applicationEntityDTOBuilder) getNodeCPUFrequency(pod *api.Pod) (f
 	return cpuFrequency, nil
 }
 
-func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod) ([]*proto.EntityDTO, error) {
+func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod, nodeNameUIDMap map[string]string) ([]*proto.EntityDTO, error) {
 	var result []*proto.EntityDTO
 
 	for _, pod := range pods {
@@ -78,7 +78,7 @@ func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod) ([]
 				DisplayName(displayName)
 
 			//2. sold commodities: transaction and responseTime
-			commoditiesSold, err := getCommoditiesSold(pod, i)
+			commoditiesSold, err := getCommoditiesSold(pod, i, false)
 			if err != nil {
 				glog.Errorf("Failed to create Application(%s) entityDTO: %v", displayName, err)
 				continue
@@ -98,17 +98,17 @@ func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod) ([]
 			properties := builder.getApplicationProperties(pod, i)
 			ebuilder.WithProperties(properties)
 
-			truep := true
+			//truep := true
 			controllable := util.Controllable(pod)
 			ebuilder.ConsumerPolicy(&proto.EntityDTO_ConsumerPolicy{
-				ProviderMustClone: &truep,
-				Controllable:      &controllable,
+				//ProviderMustClone: &truep,
+				Controllable: &controllable,
 			})
 
 			appType := util.GetAppType(pod)
 			ebuilder.ApplicationData(&proto.EntityDTO_ApplicationData{
-				Type:      &appType,
-				IpAddress: &(pod.Status.PodIP),
+				Type: &appType,
+				//IpAddress: &(pod.Status.PodIP),
 			})
 
 			ebuilder.WithPowerState(proto.EntityDTO_POWERED_ON)
@@ -119,7 +119,75 @@ func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod) ([]
 				glog.Errorf("Failed to build Application entityDTO based on application %s: %s", displayName, err)
 				continue
 			}
+
 			result = append(result, entityDTO)
+
+			if i == 0 {
+				//1. Id and Name
+				//container := &(pod.Spec.Containers[i])
+				//containerId := util.ContainerIdFunc(podId, i)
+				appId := "HS-" + util.ApplicationIdFunc(containerId)
+				//containerMId := util.ContainerMetricId(podMId, container.Name)
+				//appMId := util.ApplicationMetricId(containerMId)
+
+				displayName := fmt.Sprintf("HS-App-%s", podFullName)
+
+				ebuilder := sdkbuilder.NewEntityDTOBuilder(proto.EntityDTO_APPLICATION, appId).
+					DisplayName(displayName)
+
+				//2. sold commodities: transaction and responseTime
+				commoditiesSold, err := getCommoditiesSold(pod, i, true)
+				if err != nil {
+					glog.Errorf("Failed to create Application(%s) entityDTO: %v", displayName, err)
+					continue
+				}
+				ebuilder.SellsCommodities(commoditiesSold)
+
+				//3. bought commodities: vcpu/vmem/application
+				commoditiesBought, err := builder.getApplicationCommoditiesBought(appMId, podFullName, containerId, nodeCPUFrequency)
+				if err != nil {
+					glog.Errorf("Failed to create Application(%s) entityDTO: %v", displayName, err)
+					continue
+				}
+
+				providerNodeUID, exist := nodeNameUIDMap[pod.Spec.NodeName]
+				if !exist {
+					glog.Errorf("Error when create commoditiesBought for pod %s: Cannot find uuid for provider "+
+						"node.", displayName)
+					continue
+				}
+				provider := sdkbuilder.CreateProvider(proto.EntityDTO_VIRTUAL_MACHINE, providerNodeUID)
+				ebuilder.Provider(provider).BuysCommodities(commoditiesBought)
+
+				//4. set properties
+				properties := builder.getApplicationProperties(pod, i)
+				ebuilder.WithProperties(properties)
+
+				//truep := true
+				controllable := util.Controllable(pod)
+				ebuilder.ConsumerPolicy(&proto.EntityDTO_ConsumerPolicy{
+					//ProviderMustClone: &truep,
+					Controllable: &controllable,
+				})
+
+				appType := util.GetAppType(pod)
+				ebuilder.ApplicationData(&proto.EntityDTO_ApplicationData{
+					Type:      &appType,
+					IpAddress: &(pod.Status.PodIP),
+				})
+
+				ebuilder.WithPowerState(proto.EntityDTO_POWERED_ON)
+
+				//5. build the entityDTO
+				entityDTO, err := ebuilder.Create()
+				if err != nil {
+					glog.Errorf("Failed to build Application entityDTO based on application %s: %s", displayName, err)
+					continue
+				}
+
+				result = append(result, entityDTO)
+			}
+
 		}
 	}
 
@@ -127,10 +195,14 @@ func (builder *applicationEntityDTOBuilder) BuildEntityDTOs(pods []*api.Pod) ([]
 }
 
 // applicationEntity sells transaction and responseTime
-func getCommoditiesSold(pod *api.Pod, index int) ([]*proto.CommodityDTO, error) {
+func getCommoditiesSold(pod *api.Pod, index int, isHS bool) ([]*proto.CommodityDTO, error) {
 	var result []*proto.CommodityDTO
 
 	key := getAppStitchingProperty(pod, index)
+
+	if !isHS {
+		key = "NHS-" + key
+	}
 
 	ebuilder := sdkbuilder.NewCommodityDTOBuilder(proto.CommodityDTO_TRANSACTION).Key(key)
 
@@ -172,14 +244,14 @@ func (builder *applicationEntityDTOBuilder) getApplicationCommoditiesBought(appM
 	}
 	commoditiesBought = append(commoditiesBought, resourceCommoditiesBought...)
 
-	// Application commodity
-	applicationCommBought, err := sdkbuilder.NewCommodityDTOBuilder(proto.CommodityDTO_APPLICATION).
-		Key(containerId).
-		Create()
-	if err != nil {
-		return nil, err
-	}
-	commoditiesBought = append(commoditiesBought, applicationCommBought)
+	//// Application commodity
+	//applicationCommBought, err := sdkbuilder.NewCommodityDTOBuilder(proto.CommodityDTO_APPLICATION).
+	//	Key(containerId).
+	//	Create()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//commoditiesBought = append(commoditiesBought, applicationCommBought)
 	return commoditiesBought, nil
 }
 

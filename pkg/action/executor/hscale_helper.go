@@ -58,8 +58,9 @@ func (helper *scaleHelper) SetParent(kind, name string) error {
 
 //------------------------------------------------------------
 func setNum(current, diff int32) (int32, error) {
-	if current < 1 && diff < 0 {
-		return 0, fmt.Errorf("replica num cannot be less than 0.")
+	if current <= 1 && diff < 0 {
+		glog.Errorf("replica num cannot be less than 1.")
+		return 0, fmt.Errorf("replica num cannot be less than 1.")
 	}
 
 	result := current + diff
@@ -149,7 +150,7 @@ func updateDeploymentReplicaNum(client *kclient.Clientset, namespace, name strin
 	num, err := setNum(*(rs.Spec.Replicas), diff)
 	if err != nil {
 		glog.Warningf("RS-%s resulting replica num[%v] less than 0. (diff=%v)", fullName, num, diff)
-		return fmt.Errorf("Aborted")
+		return fmt.Errorf(err.Error())
 	}
 	rs.Spec.Replicas = &num
 

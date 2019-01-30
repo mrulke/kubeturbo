@@ -34,6 +34,8 @@ var (
 	turboActionPodMove             turboActionType = turboActionType{proto.ActionItemDTO_MOVE, proto.EntityDTO_CONTAINER_POD}
 	turboActionContainerResize     turboActionType = turboActionType{proto.ActionItemDTO_RIGHT_SIZE, proto.EntityDTO_CONTAINER}
 	turboActionContainerPodSuspend turboActionType = turboActionType{proto.ActionItemDTO_SUSPEND, proto.EntityDTO_CONTAINER_POD}
+	turboActionAppProvision        turboActionType = turboActionType{proto.ActionItemDTO_PROVISION, proto.EntityDTO_APPLICATION}
+	turboActionAppSuspend          turboActionType = turboActionType{proto.ActionItemDTO_SUSPEND, proto.EntityDTO_APPLICATION}
 
 	//turboActionUnbind          turboActionType = "unbind"
 )
@@ -104,6 +106,8 @@ func (h *ActionHandler) registerActionExecutors() {
 	horizontalScaler := executor.NewHorizontalScaler(ae)
 	h.actionExecutors[turboActionPodProvision] = horizontalScaler
 	h.actionExecutors[turboActionContainerPodSuspend] = horizontalScaler
+	h.actionExecutors[turboActionAppProvision] = horizontalScaler
+	h.actionExecutors[turboActionAppSuspend] = horizontalScaler
 
 	containerResizer := executor.NewContainerResizer(ae, c.kubeletClient, c.sccAllowedSet)
 	h.actionExecutors[turboActionContainerResize] = containerResizer
@@ -192,6 +196,9 @@ func (h *ActionHandler) getRelatedPod(actionItem *proto.ActionItemDTO) *api.Pod 
 	var podEntity *proto.EntityDTO
 	se := actionItem.GetTargetSE()
 
+	podName := ""
+	podId := ""
+
 	switch actionType {
 	case turboActionContainerResize:
 		podEntity = actionItem.GetHostedBySE()
@@ -201,13 +208,24 @@ func (h *ActionHandler) getRelatedPod(actionItem *proto.ActionItemDTO) *api.Pod 
 		podEntity = se
 	case turboActionContainerPodSuspend:
 		podEntity = se
+	case turboActionAppProvision:
+		podName = strings.TrimPrefix(se.GetDisplayName(), "HS-App-")
+		glog.V(2).Info("turboActionAppProvision POD: " + podName)
+	case turboActionAppSuspend:
+		podName = strings.TrimPrefix(se.GetDisplayName(), "HS-App-")
+		glog.V(2).Info("turboActionAppSuspend POD: " + podName)
 	default:
 		return nil
 	}
 
-	pod, err := h.podManager.GetPodFromDisplayNameOrUUID(podEntity.GetDisplayName(), podEntity.GetId())
+	if podEntity != nil {
+		podName = podEntity.GetDisplayName()
+		podId = podEntity.GetId()
+	}
+
+	pod, err := h.podManager.GetPodFromDisplayNameOrUUID(podName, podId)
 	if err != nil {
-		glog.Errorf("failed to get Pod %s with id %s: %v", podEntity.GetDisplayName(), podEntity.GetId(), err)
+		glog.Errorf("failed to get Pod %s with id %s: %v", podName, podId, err)
 		return nil
 	}
 

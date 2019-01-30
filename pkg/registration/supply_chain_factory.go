@@ -218,9 +218,10 @@ func (f *SupplyChainFactory) buildApplicationSupplyBuilder() (*proto.TemplateDTO
 		Sells(transactionTemplateComm).
 		Sells(respTimeTemplateComm).
 		Provider(proto.EntityDTO_CONTAINER, proto.Provider_HOSTING).
+		Provider(proto.EntityDTO_VIRTUAL_MACHINE, proto.Provider_LAYERED_OVER).
 		Buys(vCpuTemplateComm).
-		Buys(vMemTemplateComm).
-		Buys(applicationTemplateComm)
+		Buys(vMemTemplateComm) //.
+		//Buys(applicationTemplateComm)
 
 	return appSupplyChainNodeBuilder.Create()
 }

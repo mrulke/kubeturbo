@@ -79,16 +79,16 @@ func (rClient *K8sRegistrationClient) GetActionPolicy() []*proto.ActionPolicyDTO
 	glog.V(3).Infof("Begin to build Action Policies")
 	ab := builder.NewActionPolicyBuilder()
 	supported := proto.ActionPolicyDTO_SUPPORTED
-	recommend := proto.ActionPolicyDTO_NOT_EXECUTABLE
+	//recommend := proto.ActionPolicyDTO_NOT_EXECUTABLE
 	notSupported := proto.ActionPolicyDTO_NOT_SUPPORTED
 
 	//1. containerPod: move, provision; not resize;
 	pod := proto.EntityDTO_CONTAINER_POD
 	podPolicy := make(map[proto.ActionItemDTO_ActionType]proto.ActionPolicyDTO_ActionCapability)
 	podPolicy[proto.ActionItemDTO_MOVE] = supported
-	podPolicy[proto.ActionItemDTO_PROVISION] = supported
+	podPolicy[proto.ActionItemDTO_PROVISION] = notSupported
 	podPolicy[proto.ActionItemDTO_RIGHT_SIZE] = notSupported
-	podPolicy[proto.ActionItemDTO_SUSPEND] = supported
+	podPolicy[proto.ActionItemDTO_SUSPEND] = notSupported
 
 	rClient.addActionPolicy(ab, pod, podPolicy)
 
@@ -96,19 +96,19 @@ func (rClient *K8sRegistrationClient) GetActionPolicy() []*proto.ActionPolicyDTO
 	container := proto.EntityDTO_CONTAINER
 	containerPolicy := make(map[proto.ActionItemDTO_ActionType]proto.ActionPolicyDTO_ActionCapability)
 	containerPolicy[proto.ActionItemDTO_RIGHT_SIZE] = supported
-	containerPolicy[proto.ActionItemDTO_PROVISION] = recommend
+	containerPolicy[proto.ActionItemDTO_PROVISION] = notSupported
 	containerPolicy[proto.ActionItemDTO_MOVE] = notSupported
-	containerPolicy[proto.ActionItemDTO_SUSPEND] = recommend
+	containerPolicy[proto.ActionItemDTO_SUSPEND] = notSupported
 
 	rClient.addActionPolicy(ab, container, containerPolicy)
 
 	//3. application: only recommend provision; all else are not supported
 	app := proto.EntityDTO_APPLICATION
 	appPolicy := make(map[proto.ActionItemDTO_ActionType]proto.ActionPolicyDTO_ActionCapability)
-	appPolicy[proto.ActionItemDTO_PROVISION] = recommend
+	appPolicy[proto.ActionItemDTO_PROVISION] = supported
 	appPolicy[proto.ActionItemDTO_RIGHT_SIZE] = notSupported
 	appPolicy[proto.ActionItemDTO_MOVE] = notSupported
-	appPolicy[proto.ActionItemDTO_SUSPEND] = recommend
+	appPolicy[proto.ActionItemDTO_SUSPEND] = supported
 
 	rClient.addActionPolicy(ab, app, appPolicy)
 

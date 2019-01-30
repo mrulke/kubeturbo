@@ -46,7 +46,7 @@ func Test_getCommoditiesSold(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCommoditiesSold(tt.args.pod, tt.args.index)
+			got, err := getCommoditiesSold(tt.args.pod, tt.args.index, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCommoditiesSold() error = %v, wantErr %v", err, tt.wantErr)
 				return

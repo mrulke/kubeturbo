@@ -72,9 +72,12 @@ func (builder *ServiceEntityDTOBuilder) createCommodityBought(ebuilder *sdkbuild
 	for _, pod := range pods {
 		podId := string(pod.UID)
 		for i := range pod.Spec.Containers {
+			if i != 0 {
+				continue
+			}
 			containerName := util.ContainerNameFunc(pod, &(pod.Spec.Containers[i]))
 			containerId := util.ContainerIdFunc(podId, i)
-			appId := util.ApplicationIdFunc(containerId)
+			appId := "HS-" + util.ApplicationIdFunc(containerId)
 
 			appDTO, exist := appDTOs[appId]
 			if !exist {

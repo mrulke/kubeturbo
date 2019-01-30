@@ -339,7 +339,7 @@ func (worker *k8sDiscoveryWorker) buildDTOs(currTask *task.Task) ([]*proto.Entit
 
 	//4. build entityDTOs for applications
 	applicationEntityDTOBuilder := dtofactory.NewApplicationEntityDTOBuilder(worker.sink)
-	appEntityDTOs, err := applicationEntityDTOBuilder.BuildEntityDTOs(pods)
+	appEntityDTOs, err := applicationEntityDTOBuilder.BuildEntityDTOs(pods, nodeNameUIDMap)
 	if err != nil {
 		glog.Errorf("Error while creating application entityDTOs: %v", err)
 	}
