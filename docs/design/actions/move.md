@@ -7,7 +7,7 @@ move a pod which is controlled by a ReplicationController, or ReplicaSet, or Dep
    The cloned pod **podA** has everything except the labels and podName of the original Pod.
    Since **podA** has no labels, no controller will try to adopt it.
    
- 2. Delete the original Pod
+ 2. Delete the original Pod after the pod in 1) is ready
  
    Once the original Pod get deleted, the controller will create another new Pod **podB**.
    
